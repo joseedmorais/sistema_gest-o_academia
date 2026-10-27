@@ -1,33 +1,22 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+
 # ------------------------------------------------------------
-# Funções auxiliares (entrada de dados)
+# Configurações
 # ------------------------------------------------------------
-def ler_inteiro(mensagem: str) -> int:
-    """Lê um número inteiro, repetindo até o usuário digitar um valor válido."""
-    while True:
-        try:
-            return int(input(mensagem))
-        except ValueError:
-            print("Valor inválido. Digite um número inteiro.")
+ARQUIVO = "alunos.txt"
 
-
-def escolher_plano() -> str:
-    """Mostra os planos disponíveis e devolve o nome do plano escolhido."""
-    print("\nPlanos disponíveis:")
-    for nome, valor in PLANOS.items():
-        print(f"  {nome} - R$ {valor:.2f}")
-
-    while True:
-        plano = input("Plano: ").strip().capitalize()
-        if plano in PLANOS:
-            return plano
-        print("Plano inexistente. Escolha um da lista.")
+PLANOS = {
+    "Basico": 80.00,
+    "Intermediario": 120.00,
+    "Premium": 180.00,
+}
 
 
 # ------------------------------------------------------------
-# Funções de arquivo (persistência)
+# Persistência
 # ------------------------------------------------------------
 def carregar_alunos() -> list:
-    """Lê o arquivo e devolve uma lista de dicionários (um por aluno)."""
     alunos = []
     try:
         with open(ARQUIVO, "r", encoding="utf-8") as arquivo:
@@ -43,206 +32,228 @@ def carregar_alunos() -> list:
                     "pago": pago == "sim",
                 })
     except FileNotFoundError:
-        pass   # primeira execução: o arquivo ainda não existe
+        pass
     return alunos
 
 
 def salvar_alunos(alunos: list) -> None:
-    """Grava todos os alunos no arquivo, substituindo o conteúdo anterior."""
     with open(ARQUIVO, "w", encoding="utf-8") as arquivo:
-        for aluno in alunos:
-            pago = "sim" if aluno["pago"] else "nao"
-            arquivo.write(f"{aluno['nome']};{aluno['idade']};{aluno['plano']};{pago}\n")
+        for a in alunos:
+            pago = "sim" if a["pago"] else "nao"
+            arquivo.write(f"{a['nome']};{a['idade']};{a['plano']};{pago}\n")
 
 
 # ------------------------------------------------------------
-# Funções do sistema
+# Interface
 # ------------------------------------------------------------
-def buscar_por_nome(alunos: list, nome: str):
-    """Devolve o dicionário do aluno ou None se não encontrar."""
-    for aluno in alunos:
-        if aluno["nome"].lower() == nome.lower():
-            return aluno
-    return None
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Gestão de Academia")
+        self.geometry("760x520")
+        self.minsize(700, 480)
 
+        self.alunos = carregar_alunos()
 
-def exibir_aluno(aluno: dict) -> None:
-    situacao = "Pago" if aluno["pago"] else "Pendente"
-    valor = PLANOS[aluno["plano"]]
-    print(f"{aluno['nome']} | {aluno['idade']} anos | "
-          f"{aluno['plano']} (R$ {valor:.2f}) | Mensalidade: {situacao}")
+        self.var_nome = tk.StringVar()
+        self.var_idade = tk.StringVar()
+        self.var_plano = tk.StringVar(value=list(PLANOS)[0])
+        self.var_busca = tk.StringVar()
+        self.var_pendentes = tk.BooleanVar(value=False)
 
+        self.criar_widgets()
+        self.atualizar_lista()
 
-def cadastrar_aluno(alunos: list) -> None:
-    nome = input("Nome do aluno: ").strip().replace(";", "")
-    if nome == "":
-        print("Nome inválido.")
-        return
-    if buscar_por_nome(alunos, nome):
-        print("Já existe um aluno com esse nome.")
-        return
+    def criar_widgets(self):
+        # --- Formulário de cadastro ---
+        form = ttk.LabelFrame(self, text="Aluno", padding=10)
+        form.pack(fill="x", padx=10, pady=(10, 5))
 
-    idade = ler_inteiro("Idade: ")
-    if idade < 12:
-        print("Idade mínima para matrícula: 12 anos.")
-        return
+        ttk.Label(form, text="Nome:").grid(row=0, column=0, sticky="w")
+        ttk.Entry(form, textvariable=self.var_nome, width=30).grid(row=0, column=1, padx=5)
 
-    plano = escolher_plano()
-    aluno = {"nome": nome, "idade": idade, "plano": plano, "pago": False}
-    alunos.append(aluno)
-    salvar_alunos(alunos)
-    print("Aluno cadastrado com sucesso!")
+        ttk.Label(form, text="Idade:").grid(row=0, column=2, sticky="w")
+        ttk.Entry(form, textvariable=self.var_idade, width=6).grid(row=0, column=3, padx=5)
 
+        ttk.Label(form, text="Plano:").grid(row=0, column=4, sticky="w")
+        ttk.Combobox(form, textvariable=self.var_plano, values=list(PLANOS),
+                     state="readonly", width=14).grid(row=0, column=5, padx=5)
 
-def listar_alunos(alunos: list, apenas_pendentes: bool = False) -> None:
-    """Lista os alunos. Com apenas_pendentes=True, mostra só quem não pagou."""
-    contador = 0
-    print("\n--- Alunos ---")
-    for aluno in alunos:
-        if apenas_pendentes and aluno["pago"]:
-            continue
-        contador += 1
-        print(f"{contador}. ", end="")
-        exibir_aluno(aluno)
+        ttk.Button(form, text="Cadastrar", command=self.cadastrar).grid(row=0, column=6, padx=(10, 0))
 
-    if contador == 0:
-        print("Nenhum aluno para exibir.")
+        # --- Busca e filtro ---
+        filtro = ttk.Frame(self)
+        filtro.pack(fill="x", padx=10, pady=5)
 
+        ttk.Label(filtro, text="Pesquisar:").pack(side="left")
+        entrada_busca = ttk.Entry(filtro, textvariable=self.var_busca, width=30)
+        entrada_busca.pack(side="left", padx=5)
+        self.var_busca.trace_add("write", lambda *_: self.atualizar_lista())
 
-def pesquisar_aluno(alunos: list) -> None:
-    nome = input("Nome do aluno: ").strip()
-    aluno = buscar_por_nome(alunos, nome)
-    if aluno:
-        exibir_aluno(aluno)
-    else:
-        print("Aluno não encontrado.")
+        ttk.Checkbutton(filtro, text="Somente pendentes", variable=self.var_pendentes,
+                        command=self.atualizar_lista).pack(side="left", padx=10)
 
+        # --- Tabela ---
+        quadro = ttk.Frame(self)
+        quadro.pack(fill="both", expand=True, padx=10, pady=5)
 
-def alterar_plano(alunos: list) -> None:
-    nome = input("Nome do aluno: ").strip()
-    aluno = buscar_por_nome(alunos, nome)
-    if not aluno:
-        print("Aluno não encontrado.")
-        return
+        colunas = ("nome", "idade", "plano", "valor", "situacao")
+        self.tabela = ttk.Treeview(quadro, columns=colunas, show="headings", selectmode="browse")
+        titulos = {"nome": "Nome", "idade": "Idade", "plano": "Plano",
+                   "valor": "Valor (R$)", "situacao": "Mensalidade"}
+        larguras = {"nome": 220, "idade": 60, "plano": 120, "valor": 90, "situacao": 110}
+        for c in colunas:
+            self.tabela.heading(c, text=titulos[c])
+            self.tabela.column(c, width=larguras[c], anchor="w" if c == "nome" else "center")
 
-    print(f"Plano atual: {aluno['plano']}")
-    aluno["plano"] = escolher_plano()
-    salvar_alunos(alunos)
-    print("Plano alterado com sucesso!")
+        barra = ttk.Scrollbar(quadro, orient="vertical", command=self.tabela.yview)
+        self.tabela.configure(yscrollcommand=barra.set)
+        self.tabela.pack(side="left", fill="both", expand=True)
+        barra.pack(side="right", fill="y")
 
+        self.tabela.tag_configure("pendente", foreground="#b00020")
+        self.tabela.tag_configure("pago", foreground="#1b7a2f")
+        self.tabela.bind("<<TreeviewSelect>>", self.ao_selecionar)
 
-def registrar_pagamento(alunos: list) -> None:
-    nome = input("Nome do aluno: ").strip()
-    aluno = buscar_por_nome(alunos, nome)
-    if not aluno:
-        print("Aluno não encontrado.")
-        return
-    if aluno["pago"]:
-        print("A mensalidade deste aluno já está paga.")
-        return
+        # --- Botões de ação ---
+        botoes = ttk.Frame(self)
+        botoes.pack(fill="x", padx=10, pady=(5, 5))
 
-    aluno["pago"] = True
-    salvar_alunos(alunos)
-    print(f"Pagamento de R$ {PLANOS[aluno['plano']]:.2f} registrado!")
+        ttk.Button(botoes, text="Alterar plano (usa o plano do formulário)",
+                   command=self.alterar_plano).pack(side="left")
+        ttk.Button(botoes, text="Registrar pagamento",
+                   command=self.registrar_pagamento).pack(side="left", padx=5)
+        ttk.Button(botoes, text="Remover aluno",
+                   command=self.remover).pack(side="left")
+        ttk.Button(botoes, text="Relatório",
+                   command=self.relatorio).pack(side="right")
 
+        # --- Barra de status ---
+        self.var_status = tk.StringVar()
+        ttk.Label(self, textvariable=self.var_status, relief="sunken",
+                  anchor="w", padding=3).pack(fill="x", side="bottom")
 
-def remover_aluno(alunos: list) -> None:
-    nome = input("Nome do aluno: ").strip()
-    aluno = buscar_por_nome(alunos, nome)
-    if not aluno:
-        print("Aluno não encontrado.")
-        return
+    # --------------------------------------------------------
+    # Utilidades
+    # --------------------------------------------------------
+    def buscar_por_nome(self, nome):
+        for a in self.alunos:
+            if a["nome"].lower() == nome.lower():
+                return a
+        return None
 
-    confirmacao = input(f"Remover {aluno['nome']}? (s/n): ").strip().lower()
-    if confirmacao == "s":
-        alunos.remove(aluno)
-        salvar_alunos(alunos)
-        print("Aluno removido.")
-    else:
-        print("Operação cancelada.")
+    def aluno_selecionado(self):
+        sel = self.tabela.selection()
+        if not sel:
+            messagebox.showwarning("Atenção", "Selecione um aluno na tabela.")
+            return None
+        return self.alunos[int(sel[0])]
 
+    def atualizar_lista(self):
+        self.tabela.delete(*self.tabela.get_children())
+        texto = self.var_busca.get().strip().lower()
+        for i, a in enumerate(self.alunos):
+            if self.var_pendentes.get() and a["pago"]:
+                continue
+            if texto and texto not in a["nome"].lower():
+                continue
+            situacao = "Pago" if a["pago"] else "Pendente"
+            self.tabela.insert(
+                "", "end", iid=str(i),
+                values=(a["nome"], a["idade"], a["plano"],
+                        f"{PLANOS[a['plano']]:.2f}", situacao),
+                tags=("pago" if a["pago"] else "pendente",),
+            )
+        self.var_status.set(f"{len(self.tabela.get_children())} aluno(s) exibido(s) "
+                            f"de {len(self.alunos)}")
 
-def calcular_faturamento(alunos: list) -> tuple:
-    """Devolve (valor_recebido, valor_pendente) somando as mensalidades."""
-    recebido = 0.0
-    pendente = 0.0
-    for aluno in alunos:
-        valor = PLANOS[aluno["plano"]]
+    def ao_selecionar(self, _evento):
+        sel = self.tabela.selection()
+        if sel:
+            self.var_plano.set(self.alunos[int(sel[0])]["plano"])
+
+    # --------------------------------------------------------
+    # Ações
+    # --------------------------------------------------------
+    def cadastrar(self):
+        nome = self.var_nome.get().strip().replace(";", "")
+        if nome == "":
+            messagebox.showerror("Erro", "Nome inválido.")
+            return
+        if self.buscar_por_nome(nome):
+            messagebox.showerror("Erro", "Já existe um aluno com esse nome.")
+            return
+        try:
+            idade = int(self.var_idade.get())
+        except ValueError:
+            messagebox.showerror("Erro", "Digite uma idade válida (número inteiro).")
+            return
+        if idade < 12:
+            messagebox.showerror("Erro", "Idade mínima para matrícula: 12 anos.")
+            return
+
+        self.alunos.append({"nome": nome, "idade": idade,
+                            "plano": self.var_plano.get(), "pago": False})
+        salvar_alunos(self.alunos)
+        self.var_nome.set("")
+        self.var_idade.set("")
+        self.atualizar_lista()
+        messagebox.showinfo("Sucesso", "Aluno cadastrado com sucesso!")
+
+    def alterar_plano(self):
+        aluno = self.aluno_selecionado()
+        if not aluno:
+            return
+        novo = self.var_plano.get()
+        if novo == aluno["plano"]:
+            messagebox.showinfo("Aviso", "O aluno já está nesse plano.")
+            return
+        aluno["plano"] = novo
+        salvar_alunos(self.alunos)
+        self.atualizar_lista()
+        messagebox.showinfo("Sucesso", "Plano alterado com sucesso!")
+
+    def registrar_pagamento(self):
+        aluno = self.aluno_selecionado()
+        if not aluno:
+            return
         if aluno["pago"]:
-            recebido += valor
-        else:
-            pendente += valor
-    return recebido, pendente
+            messagebox.showinfo("Aviso", "A mensalidade deste aluno já está paga.")
+            return
+        aluno["pago"] = True
+        salvar_alunos(self.alunos)
+        self.atualizar_lista()
+        messagebox.showinfo("Sucesso",
+                            f"Pagamento de R$ {PLANOS[aluno['plano']]:.2f} registrado!")
+
+    def remover(self):
+        aluno = self.aluno_selecionado()
+        if not aluno:
+            return
+        if messagebox.askyesno("Confirmar", f"Remover {aluno['nome']}?"):
+            self.alunos.remove(aluno)
+            salvar_alunos(self.alunos)
+            self.atualizar_lista()
+
+    def relatorio(self):
+        recebido = pendente = 0.0
+        contagem = {p: 0 for p in PLANOS}
+        for a in self.alunos:
+            valor = PLANOS[a["plano"]]
+            if a["pago"]:
+                recebido += valor
+            else:
+                pendente += valor
+            contagem[a["plano"]] += 1
+
+        linhas = [f"Total de alunos: {len(self.alunos)}", ""]
+        linhas += [f"  {p}: {q}" for p, q in contagem.items()]
+        linhas += ["",
+                   f"Valor recebido:  R$ {recebido:.2f}",
+                   f"Valor pendente:  R$ {pendente:.2f}",
+                   f"Total previsto:  R$ {recebido + pendente:.2f}"]
+        messagebox.showinfo("Relatório", "\n".join(linhas))
 
 
-def contar_por_plano(alunos: list) -> dict:
-    """Devolve um dicionário {plano: quantidade de alunos}."""
-    contagem = {plano: 0 for plano in PLANOS}
-    for aluno in alunos:
-        contagem[aluno["plano"]] += 1
-    return contagem
-
-
-def exibir_relatorio(alunos: list) -> None:
-    recebido, pendente = calcular_faturamento(alunos)
-    contagem = contar_por_plano(alunos)
-
-    print("\n========== RELATÓRIO ==========")
-    print("Total de alunos:", len(alunos))
-    for plano, quantidade in contagem.items():
-        print(f"  {plano}: {quantidade}")
-    print(f"Valor recebido:  R$ {recebido:.2f}")
-    print(f"Valor pendente:  R$ {pendente:.2f}")
-    print(f"Total previsto:  R$ {recebido + pendente:.2f}")
-
-
-# ------------------------------------------------------------
-# Menu principal
-# ------------------------------------------------------------
-def exibir_menu() -> None:
-    print("\n================================")
-    print("      GESTÃO DE ACADEMIA")
-    print("================================")
-    print("1 - Cadastrar aluno")
-    print("2 - Listar alunos")
-    print("3 - Listar mensalidades pendentes")
-    print("4 - Pesquisar aluno")
-    print("5 - Alterar plano")
-    print("6 - Registrar pagamento")
-    print("7 - Remover aluno")
-    print("8 - Relatório")
-    print("9 - Sair")
-
-
-def menu() -> None:
-    alunos = carregar_alunos()   # carrega os dados salvos ao iniciar
-
-    while True:
-        exibir_menu()
-        opcao = input("Escolha uma opção: ").strip()
-
-        if opcao == "1":
-            cadastrar_aluno(alunos)
-        elif opcao == "2":
-            listar_alunos(alunos)
-        elif opcao == "3":
-            listar_alunos(alunos, apenas_pendentes=True)
-        elif opcao == "4":
-            pesquisar_aluno(alunos)
-        elif opcao == "5":
-            alterar_plano(alunos)
-        elif opcao == "6":
-            registrar_pagamento(alunos)
-        elif opcao == "7":
-            remover_aluno(alunos)
-        elif opcao == "8":
-            exibir_relatorio(alunos)
-        elif opcao == "9":
-            print("Sistema encerrado. Bons treinos!")
-            break
-        else:
-            print("Opção inválida!")
-
-
-if _name_ == "_main_":
-    menu()
+if __name__ == "__main__":
+    App().mainloop()
