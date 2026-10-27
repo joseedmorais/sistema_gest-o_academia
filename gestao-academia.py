@@ -1,10 +1,9 @@
-
 nomes = []
 idades = []
 planos = []   
 pagos = []    
 nomes_planos = ["Basico", "Intermediario", "Premium"]
-valores_planos = [80, 120, 180]
+valores_planos = [80, 110, 150]
 idade_minima = 12
 
 while True:
@@ -26,14 +25,9 @@ while True:
         nome = input("Nome: ")
         idade = int(input("Idade: "))
 
-        existe = False
-        for i in range(len(nomes)):
-            if nomes[i] == nome:
-                existe = True
-
         if nome == "":
             print("Nome inválido.")
-        elif existe:
+        elif nome in nomes:
             print("Já existe um aluno com esse nome.")
         elif idade < idade_minima:
             print("Idade mínima para matrícula:", idade_minima, "anos.")
