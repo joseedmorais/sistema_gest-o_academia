@@ -1,22 +1,15 @@
-ARQUIVO = "alunos.txt"
-NOMES_PLANOS = ["Basico", "Intermediario", "Premium"]
-VALORES_PLANOS = [80.00, 120.00, 180.00]
-IDADE_MINIMA = 12
 
-
-open(ARQUIVO, "a").close()
-
-
-alunos = []
-arquivo = open(ARQUIVO, "r", encoding="utf-8")
-for linha in arquivo:
-    linha = linha.strip()
-    if linha != "":
-        alunos.append(linha.split(";"))
-arquivo.close()
+nomes = []
+idades = []
+planos = []   
+pagos = []    
+nomes_planos = ["Basico", "Intermediario", "Premium"]
+valores_planos = [80, 120, 180]
+idade_minima = 12
 
 while True:
-    print("\n===== GESTÃO DE ACADEMIA =====")
+    print("")
+    print("===== GESTÃO DE ACADEMIA =====")
     print("1 - Cadastrar aluno")
     print("2 - Listar alunos")
     print("3 - Pesquisar aluno")
@@ -28,157 +21,152 @@ while True:
     print("0 - Sair")
     opcao = input("Escolha: ")
 
+
     if opcao == "1":
-        nome = input("Nome: ").strip().replace(";", "")
-        idade = input("Idade: ")
+        nome = input("Nome: ")
+        idade = int(input("Idade: "))
 
         existe = False
-        for a in alunos:
-            if a[0].lower() == nome.lower():
+        for i in range(len(nomes)):
+            if nomes[i] == nome:
                 existe = True
 
         if nome == "":
             print("Nome inválido.")
         elif existe:
             print("Já existe um aluno com esse nome.")
-        elif not idade.isdigit():
-            print("Digite uma idade válida (número inteiro).")
-        elif int(idade) < IDADE_MINIMA:
-            print(f"Idade mínima para matrícula: {IDADE_MINIMA} anos.")
+        elif idade < idade_minima:
+            print("Idade mínima para matrícula:", idade_minima, "anos.")
         else:
             print("Planos: 1-Basico  2-Intermediario  3-Premium")
-            escolha = input("Plano (1/2/3): ")
-            if escolha == "1" or escolha == "2" or escolha == "3":
-                plano = NOMES_PLANOS[int(escolha) - 1]
-                alunos.append([nome, idade, plano, "nao"])
+            plano = int(input("Plano (1/2/3): "))
+            if plano >= 1 and plano <= 3:
+                nomes.append(nome)
+                idades.append(idade)
+                planos.append(plano)
+                pagos.append(False)
                 print("Aluno cadastrado com sucesso!")
             else:
                 print("Plano inválido.")
 
 
     elif opcao == "2":
-        if len(alunos) == 0:
+        if len(nomes) == 0:
             print("Nenhum aluno cadastrado.")
-        for a in alunos:
-            valor = VALORES_PLANOS[NOMES_PLANOS.index(a[2])]
-            if a[3] == "sim":
+        for i in range(len(nomes)):
+            if pagos[i] == True:
                 situacao = "Pago"
             else:
                 situacao = "Pendente"
-            print(f"{a[0]} | {a[1]} anos | {a[2]} | R$ {valor:.2f} | {situacao}")
-
+            print(nomes[i], "|", idades[i], "anos |", nomes_planos[planos[i] - 1],
+                  "| R$", valores_planos[planos[i] - 1], "|", situacao)
 
     elif opcao == "3":
-        texto = input("Pesquisar nome: ").strip().lower()
+        texto = input("Pesquisar nome: ")
         encontrados = 0
-        for a in alunos:
-            if texto in a[0].lower():
-                valor = VALORES_PLANOS[NOMES_PLANOS.index(a[2])]
-                if a[3] == "sim":
+        for i in range(len(nomes)):
+            if texto in nomes[i]:
+                if pagos[i] == True:
                     situacao = "Pago"
                 else:
                     situacao = "Pendente"
-                print(f"{a[0]} | {a[1]} anos | {a[2]} | R$ {valor:.2f} | {situacao}")
-                encontrados += 1
-        print(f"{encontrados} aluno(s) encontrado(s).")
+                print(nomes[i], "|", idades[i], "anos |", nomes_planos[planos[i] - 1],
+                      "| R$", valores_planos[planos[i] - 1], "|", situacao)
+                encontrados = encontrados + 1
+        print(encontrados, "aluno(s) encontrado(s).")
 
 
     elif opcao == "4":
         encontrados = 0
-        for a in alunos:
-            if a[3] == "nao":
-                valor = VALORES_PLANOS[NOMES_PLANOS.index(a[2])]
-                print(f"{a[0]} | {a[1]} anos | {a[2]} | R$ {valor:.2f} | Pendente")
-                encontrados += 1
-        print(f"{encontrados} aluno(s) com mensalidade pendente.")
+        for i in range(len(nomes)):
+            if pagos[i] == False:
+                print(nomes[i], "|", idades[i], "anos |", nomes_planos[planos[i] - 1],
+                      "| R$", valores_planos[planos[i] - 1], "| Pendente")
+                encontrados = encontrados + 1
+        print(encontrados, "aluno(s) com mensalidade pendente.")
 
 
     elif opcao == "5":
         nome = input("Nome do aluno: ")
         posicao = -1
-        for i in range(len(alunos)):
-            if alunos[i][0].lower() == nome.lower():
+        for i in range(len(nomes)):
+            if nomes[i] == nome:
                 posicao = i
 
         if posicao == -1:
             print("Aluno não encontrado.")
         else:
             print("Planos: 1-Basico  2-Intermediario  3-Premium")
-            escolha = input("Novo plano (1/2/3): ")
-            if escolha != "1" and escolha != "2" and escolha != "3":
+            novo_plano = int(input("Novo plano (1/2/3): "))
+            if novo_plano < 1 or novo_plano > 3:
                 print("Plano inválido.")
-            elif NOMES_PLANOS[int(escolha) - 1] == alunos[posicao][2]:
+            elif novo_plano == planos[posicao]:
                 print("O aluno já está nesse plano.")
             else:
-                alunos[posicao][2] = NOMES_PLANOS[int(escolha) - 1]
+                planos[posicao] = novo_plano
                 print("Plano alterado com sucesso!")
 
 
     elif opcao == "6":
         nome = input("Nome do aluno: ")
         posicao = -1
-        for i in range(len(alunos)):
-            if alunos[i][0].lower() == nome.lower():
+        for i in range(len(nomes)):
+            if nomes[i] == nome:
                 posicao = i
 
         if posicao == -1:
             print("Aluno não encontrado.")
-        elif alunos[posicao][3] == "sim":
+        elif pagos[posicao] == True:
             print("A mensalidade deste aluno já está paga.")
         else:
-            alunos[posicao][3] = "sim"
-            valor = VALORES_PLANOS[NOMES_PLANOS.index(alunos[posicao][2])]
-            print(f"Pagamento de R$ {valor:.2f} registrado!")
+            pagos[posicao] = True
+            print("Pagamento de R$", valores_planos[planos[posicao] - 1], "registrado!")
 
 
     elif opcao == "7":
         nome = input("Nome do aluno: ")
         posicao = -1
-        for i in range(len(alunos)):
-            if alunos[i][0].lower() == nome.lower():
+        for i in range(len(nomes)):
+            if nomes[i] == nome:
                 posicao = i
 
         if posicao == -1:
             print("Aluno não encontrado.")
         else:
-            confirmar = input(f"Remover {alunos[posicao][0]}? (s/n): ")
-            if confirmar.lower() == "s":
-                del alunos[posicao]
+            confirmar = input("Remover " + nomes[posicao] + "? (s/n): ")
+            if confirmar == "s":
+                nomes.pop(posicao)
+                idades.pop(posicao)
+                planos.pop(posicao)
+                pagos.pop(posicao)
                 print("Aluno removido.")
             else:
                 print("Remoção cancelada.")
 
-    # ---------- 8 - RELATÓRIO ----------
+
     elif opcao == "8":
-        recebido = 0.0
-        pendente = 0.0
+        recebido = 0
+        pendente = 0
         contagem = [0, 0, 0]
-        for a in alunos:
-            i = NOMES_PLANOS.index(a[2])
-            if a[3] == "sim":
-                recebido += VALORES_PLANOS[i]
+        for i in range(len(nomes)):
+            valor = valores_planos[planos[i] - 1]
+            if pagos[i] == True:
+                recebido = recebido + valor
             else:
-                pendente += VALORES_PLANOS[i]
-            contagem[i] += 1
+                pendente = pendente + valor
+            contagem[planos[i] - 1] = contagem[planos[i] - 1] + 1
 
-        print(f"Total de alunos: {len(alunos)}")
-        print(f"  Basico: {contagem[0]}")
-        print(f"  Intermediario: {contagem[1]}")
-        print(f"  Premium: {contagem[2]}")
-        print(f"Valor recebido:  R$ {recebido:.2f}")
-        print(f"Valor pendente:  R$ {pendente:.2f}")
-        print(f"Total previsto:  R$ {recebido + pendente:.2f}")
+        print("Total de alunos:", len(nomes))
+        print("  Basico:", contagem[0])
+        print("  Intermediario:", contagem[1])
+        print("  Premium:", contagem[2])
+        print("Valor recebido: R$", recebido)
+        print("Valor pendente: R$", pendente)
+        print("Total previsto: R$", recebido + pendente)
 
-    # ---------- 0 - SAIR ----------
     elif opcao == "0":
         print("Até logo!")
         break
 
     else:
         print("Opção inválida.")
-
-    # Salva tudo no arquivo a cada volta do menu
-    arquivo = open(ARQUIVO, "w", encoding="utf-8")
-    for a in alunos:
-        arquivo.write(f"{a[0]};{a[1]};{a[2]};{a[3]}\n")
-    arquivo.close()
